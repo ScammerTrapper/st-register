@@ -8,11 +8,9 @@
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
     body { background-color: #0f172a; color: #f8fafc; height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; }
     
-    /* Belépő kártya */
     .join-card { background: #1e293b; padding: 2rem; border-radius: 12px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.5); width: 350px; }
     .join-card input { width: 100%; padding: 0.75rem; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: white; margin: 1rem 0; text-align: center; font-size: 1.1rem; text-transform: uppercase; }
 
-    /* Chat doboz */
     .chat-container { width: 90%; max-width: 800px; height: 80vh; background: #1e293b; border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
     .chat-header { background: #0f172a; padding: 1rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; }
     .chat-messages { flex: 1; padding: 1rem; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
@@ -37,7 +35,7 @@
     <button id="joinBtn" style="width: 100%;">Belépés a Szobába</button>
   </div>
 
-  <!-- Chat felület (Alapértelmezetten rejtett) -->
+  <!-- Chat felület -->
   <div class="chat-container" id="chatSection" style="display: none;">
     <div class="chat-header">
       <div>Szoba kód: <strong id="currentRoom" style="color: #38bdf8;"></strong></div>
@@ -53,7 +51,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-    import { getFirestore, doc, getDoc, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getFirestore, doc, getDoc, setDoc, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyACpOJUxF6rzqrhqeiQl2BY575CdrDmHN0",
@@ -72,16 +70,26 @@
     let currentUserData = null;
     let activeCode = "";
 
-    // Jogosultság ellenőrzése (ha nincs belépve -> átirányítás auth.html-re)
+    // Védett oldal + Firestore ellenőrzés/létrehozás
     onAuthStateChanged(auth, async (user) => {
       if (!user) {
         window.location.href = "auth.html";
       } else {
-        // Felhasználó adatai és rangja beolvasása Firestore-ból
-        const userDoc = await getDoc(doc(db, "users", user.uid));
-        if (userDoc.exists()) {
-          currentUserData = userDoc.data();
+        const userRef = doc(db, "users", user.uid);
+        let userSnap = await getDoc(userRef);
+
+        // Ha a Firestore-ban még nincs bejegyzés a felhasználóhoz, létrehozzuk!
+        if (!userSnap.exists()) {
+          await setDoc(userRef, {
+            uid: user.uid,
+            email: user.email,
+            role: "scammerTrapper",
+            createdAt: new Date()
+          });
+          userSnap = await getDoc(userRef);
         }
+
+        currentUserData = userSnap.data();
       }
     });
 
@@ -104,7 +112,7 @@
         document.getElementById("chatSection").style.display = "flex";
         document.getElementById("currentRoom").innerText = code;
 
-        // Üzenetek valós idejű betöltése
+        // Üzenetek töltése
         const q = query(collection(db, "rooms", code, "messages"), orderBy("timestamp", "asc"));
         onSnapshot(q, (snapshot) => {
           const messagesDiv = document.getElementById("messages");
@@ -115,7 +123,7 @@
             msgEl.className = "message";
             msgEl.innerHTML = `
               <div class="sender">
-                ${msg.sender} <span class="role">${msg.role || 'Tag'}</span>
+                ${msg.sender} <span class="role">${msg.role || 'scammerTrapper'}</span>
               </div>
               <div>${msg.text}</div>
             `;
@@ -135,7 +143,7 @@
 
       await addDoc(collection(db, "rooms", activeCode, "messages"), {
         sender: currentUserData ? currentUserData.email : "Névtelen",
-        role: currentUserData ? currentUserData.role : "Tag",
+        role: currentUserData ? currentUserData.role : "scammerTrapper",
         text: input.value,
         timestamp: serverTimestamp()
       });
