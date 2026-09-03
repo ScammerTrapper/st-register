@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ScammerTrapper - Bejelentkezés</title>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
     body { background-color: #0f172a; color: #f8fafc; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
     .card { background: #1e293b; padding: 2.5rem; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); width: 100%; max-width: 400px; }
     h2 { margin-bottom: 1.5rem; text-align: center; color: #38bdf8; }
@@ -44,7 +44,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-    import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyACpOJUxF6rzqrhqeiQl2BY575CdrDmHN0",
@@ -62,9 +62,23 @@
 
     const status = document.getElementById("status");
 
-    // Automatikus átirányítás, ha már be van jelentkezve
-    onAuthStateChanged(auth, (user) => {
+    // Automatikus ellenőrzés bejelentkezéskor: ha nincs a Firestore-ban, létrehozza a rekordot
+    onAuthStateChanged(auth, async (user) => {
       if (user) {
+        const userRef = doc(db, "users", user.uid);
+        const userSnap = await getDoc(userRef);
+
+        // Ha a felhasználónak még nincs adata a Firestore-ban, létrehozzuk
+        if (!userSnap.exists()) {
+          await setDoc(userRef, {
+            uid: user.uid,
+            email: user.email,
+            role: "scammerTrapper",
+            createdAt: new Date()
+          });
+        }
+
+        // Átirányítás a chat oldalra
         window.location.href = "chat.html";
       }
     });
@@ -74,15 +88,8 @@
       const email = document.getElementById("email").value;
       const password = document.getElementById("password").value;
       try {
-        const userCred = await createUserWithEmailAndPassword(auth, email, password);
-        // Felhasználó mentése Firestore-ba alapértelmezett ranggal
-        await setDoc(doc(db, "users", userCred.user.uid), {
-          uid: userCred.user.uid,
-          email: email,
-          role: "scammerTrapper",
-          createdAt: new Date()
-        });
-        // az onAuthStateChanged automatikusan átirányít
+        await createUserWithEmailAndPassword(auth, email, password);
+        // Az onAuthStateChanged automatikusan lefut, létrehozza a Firestore dokumentumot és átirányít!
       } catch (err) {
         status.innerText = "Hiba: " + err.message;
       }
@@ -94,7 +101,7 @@
       const password = document.getElementById("password").value;
       try {
         await signInWithEmailAndPassword(auth, email, password);
-        // az onAuthStateChanged automatikusan átirányít
+        // Az onAuthStateChanged automatikusan lefut, ellenőrzi a Firestore-t és átirányít!
       } catch (err) {
         status.innerText = "Hiba: " + err.message;
       }
