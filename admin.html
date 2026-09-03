@@ -88,12 +88,12 @@
 
         tr.innerHTML = `
           <td>${u.email}</td>
-          <td><span class="badge">${u.role || 'Nincs'}</span></td>
+          <td><span class="badge">${u.role || 'scammerTrapper'}</span></td>
           <td>
             <select id="select-${userDoc.id}">
               <option value="scammerTrapper" ${u.role === 'scammerTrapper' ? 'selected' : ''}>scammerTrapper</option>
               <option value="Admin" ${u.role === 'Admin' ? 'selected' : ''}>Admin</option>
-              <option value="VIP" ${u.role === 'VIP' ? 'selected' : ''}>VIP</option>
+              <option value="Moderátor" ${u.role === 'Moderátor' ? 'selected' : ''}>Moderátor</option>
             </select>
             <button onclick="changeRole('${userDoc.id}')">Mentés</button>
           </td>
