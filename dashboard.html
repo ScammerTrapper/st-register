@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ScammerTrapper - Dashboard</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+    body { background-color: #0f172a; color: #f8fafc; min-height: 100vh; display: flex; flex-direction: column; }
+    
+    /* Fejléc / Navigáció */
+    .navbar { background: #1e293b; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; }
+    .navbar h1 { font-size: 1.4rem; color: #38bdf8; }
+    .user-nav { display: flex; align-items: center; gap: 15px; }
+
+    /* Fő tartalom elrendezése */
+    .container { max-width: 1100px; margin: 2rem auto; padding: 0 1rem; width: 100%; display: grid; grid-template-columns: 1fr 2fr; gap: 20px; }
+    @media (max-width: 768px) { .container { grid-template-columns: 1fr; } }
+
+    /* Kártya stílusok */
+    .card { background: #1e293b; padding: 1.5rem; border-radius: 12px; box-shadow: 0 10px 20px rgba(0,0,0,0.4); margin-bottom: 20px; }
+    .card h2 { color: #38bdf8; font-size: 1.2rem; margin-bottom: 1rem; border-bottom: 1px solid #334155; padding-bottom: 0.5rem; }
+
+    /* Profil adatok */
+    .profile-item { margin-bottom: 0.8rem; }
+    .profile-item label { display: block; font-size: 0.8rem; color: #94a3b8; }
+    .profile-item span { font-weight: bold; font-size: 1rem; color: #f8fafc; }
+    .badge { display: inline-block; background: #0284c7; color: white; padding: 3px 10px; border-radius: 12px; font-size: 0.8rem; font-weight: bold; margin-top: 4px; }
+
+    /* Kód beviteli mező */
+    .join-box { display: flex; gap: 10px; margin-top: 1rem; }
+    .join-box input { flex: 1; padding: 0.75rem; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: white; font-size: 1rem; text-transform: uppercase; }
+    
+    /* Gombok */
+    button { padding: 0.75rem 1.2rem; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+    .btn-primary { background: #0284c7; color: white; }
+    .btn-primary:hover { background: #0369a1; }
+    .btn-danger { background: #f43f5e; color: white; }
+    .btn-danger:hover { background: #e11d48; }
+
+    /* Csevegések listája */
+    .chat-list { display: flex; flex-direction: column; gap: 10px; margin-top: 1rem; }
+    .chat-item { background: #0f172a; padding: 1rem; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #334155; }
+    .chat-item-info strong { color: #38bdf8; font-size: 1.1rem; }
+    .empty-state { text-align: center; color: #64748b; padding: 2rem 0; }
+  </style>
+</head>
+<body>
+
+  <!-- NAVBAR -->
+  <div class="navbar">
+    <h1>ScammerTrapper</h1>
+    <div class="user-nav">
+      <span id="navUser">Betöltés...</span>
+      <button class="btn-danger" id="logoutBtn">Kijelentkezés</button>
+    </div>
+  </div>
+
+  <div class="container">
+    
+    <!-- BAL OSZLOP: ADATAIM -->
+    <div>
+      <div class="card">
+        <h2>Személyes Adatok</h2>
+        <div class="profile-item">
+          <label>Teljes Név</label>
+          <span id="profileName">-</span>
+        </div>
+        <div class="profile-item">
+          <label>Felhasználónév</label>
+          <span id="profileUsername">-</span>
+        </div>
+        <div class="profile-item">
+          <label>Email Cím</label>
+          <span id="profileEmail">-</span>
+        </div>
+        <div class="profile-item">
+          <label>Rang / Jogosultság</label>
+          <div><span class="badge" id="profileRole">scammerTrapper</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- JOBB OSZLOP: CSEVEGÉSEK ÉS ÚJ SZOBA -->
+    <div>
+      
+      <!-- Új csevegés hozzáadása -->
+      <div class="card">
+        <h2>Új Beszélgetés Hozzáadása</h2>
+        <p style="color: #94a3b8; font-size: 0.9rem;">Írd be az admintól kapott szobakódot a csatlakozáshoz:</p>
+        <div class="join-box">
+          <input type="text" id="joinCode" placeholder="PL. A1B2C3">
+          <button class="btn-primary" id="joinBtn">Csatlakozás</button>
+        </div>
+        <p id="joinStatus" style="margin-top: 0.5rem; font-size: 0.85rem; color: #f43f5e;"></p>
+      </div>
+
+      <!-- Csevegéseim Listája -->
+      <div class="card">
+        <h2>Aktív Csevegéseim</h2>
+        <div class="chat-list" id="chatList">
+          <div class="empty-state">Még nem csatlakoztál egyetlen szobához sem.</div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { getFirestore, doc, getDoc, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyACpOJUxF6rzqrhqeiQl2BY575CdrDmHN0",
+      authDomain: "scammertrapper-a4755.firebaseapp.com",
+      projectId: "scammertrapper-a4755",
+      storageBucket: "scammertrapper-a4755.firebasestorage.app",
+      messagingSenderId: "639832220374",
+      appId: "1:639832220374:web:ae4e1942130ff40344df77",
+      measurementId: "G-SQM1PTX2LR"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    let currentUser = null;
+    let currentUserData = null;
+
+    // Aknázd ki a felhasználó státuszát
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        window.location.href = "auth.html";
+      } else {
+        currentUser = user;
+        const userRef = doc(db, "users", user.uid);
+        const userSnap = await getDoc(userRef);
+
+        if (userSnap.exists()) {
+          currentUserData = userSnap.data();
+
+          // Ha még nincsenek kitöltve a profiladatok (Google belépőnél)
+          if (!currentUserData.username) {
+            window.location.href = "google-more.html";
+            return;
+          }
+
+          renderProfile(currentUserData);
+          renderChatList(currentUserData.joinedRooms || []);
+        } else {
+          window.location.href = "google-more.html";
+        }
+      }
+    });
+
+    // Profil adatok megjelenítése
+    function renderProfile(data) {
+      document.getElementById("navUser").innerText = data.name || data.email;
+      document.getElementById("profileName").innerText = data.name || "Nincs megadva";
+      document.getElementById("profileUsername").innerText = "@" + (data.username || "nincs");
+      document.getElementById("profileEmail").innerText = data.email;
+      document.getElementById("profileRole").innerText = data.role || "scammerTrapper";
+    }
+
+    // Elmentett szobák listázása
+    function renderChatList(rooms) {
+      const chatListEl = document.getElementById("chatList");
+      if (rooms.length === 0) {
+        chatListEl.innerHTML = `<div class="empty-state">Még nem csatlakoztál egyetlen szobához sem.</div>`;
+        return;
+      }
+
+      chatListEl.innerHTML = "";
+      rooms.forEach(code => {
+        const item = document.createElement("div");
+        item.className = "chat-item";
+        item.innerHTML = `
+          <div class="chat-item-info">
+            <strong>Szoba: ${code}</strong>
+          </div>
+          <button class="btn-primary" onclick="openChat('${code}')">Megnyitás</button>
+        `;
+        chatListEl.appendChild(item);
+      });
+    }
+
+    // Szoba megnyitása (átirányítás URL paraméterrel)
+    window.openChat = (code) => {
+      window.location.href = `chat.html?kod=${code}`;
+    };
+
+    // Új szobakód hozzáadása
+    document.getElementById("joinBtn").addEventListener("click", async () => {
+      const codeInput = document.getElementById("joinCode");
+      const code = codeInput.value.trim().toUpperCase();
+      const status = document.getElementById("joinStatus");
+      status.innerText = "";
+
+      if (!code) {
+        status.innerText = "Kérlek add meg a kódot!";
+        return;
+      }
+
+      try {
+        // Ellenőrizzük, hogy létezik-e a szoba
+        const roomRef = doc(db, "rooms", code);
+        const roomSnap = await getDoc(roomRef);
+
+        if (!roomSnap.exists()) {
+          status.innerText = "Ez a szobakód nem létezik!";
+          return;
+        }
+
+        // Hozzáadjuk a szobakódot a felhasználó joinedRooms tömbjéhez
+        const userRef = doc(db, "users", currentUser.uid);
+        await updateDoc(userRef, {
+          joinedRooms: arrayUnion(code)
+        });
+
+        // Azonnal átirányítjuk a csevegésre
+        window.location.href = `chat.html?kod=${code}`;
+      } catch (err) {
+        status.innerText = "Hiba: " + err.message;
+      }
+    });
+
+    // Kijelentkezés
+    document.getElementById("logoutBtn").addEventListener("click", () => {
+      signOut(auth);
+    });
+  </script>
+</body>
+</html>
