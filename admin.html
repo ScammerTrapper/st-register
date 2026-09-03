@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+    body { background-color: #0f172a; color: #f8fafc; padding: 2rem; }
+    .container { max-width: 900px; margin: 0 auto; }
+    h2 { color: #38bdf8; margin-bottom: 1rem; }
+    .card { background: #1e293b; padding: 1.5rem; border-radius: 10px; margin-bottom: 2rem; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+    button { padding: 0.6rem 1.2rem; background: #0284c7; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
+    button:hover { background: #0369a1; }
+    .user-table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+    .user-table th, .user-table td { padding: 0.75rem; text-align: left; border-bottom: 1px solid #334155; }
+    .user-table th { color: #94a3b8; }
+    select { padding: 0.4rem; background: #0f172a; color: white; border: 1px solid #334155; border-radius: 4px; }
+    .badge { background: #0369a1; padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.8rem; }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h2>Admin Vezérlőpult</h2>
+
+    <!-- Szoba Kód Generálás -->
+    <div class="card">
+      <h3>Csevegőszoba Kód Generálás</h3>
+      <p style="color: #94a3b8; margin: 0.5rem 0;">Generálj egy egyedi kódot, amit odaadhatsz a felhasználóknak a belépéshez.</p>
+      <button id="generateBtn">Új kód generálása</button>
+      <h4 id="codeDisplay" style="margin-top: 1rem; color: #4ade80;"></h4>
+    </div>
+
+    <!-- Felhasználók listája és Rangok kezelése -->
+    <div class="card">
+      <h3>Regisztrált Felhasználók & Rangok</h3>
+      <table class="user-table">
+        <thead>
+          <tr>
+            <th>Email</th>
+            <th>Jelenlegi Rang</th>
+            <th>Új Rang Beállítása</th>
+          </tr>
+        </thead>
+        <tbody id="userList">
+          <!-- Dinamikusan töltődik fel -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, doc, setDoc, collection, onSnapshot, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyACpOJUxF6rzqrhqeiQl2BY575CdrDmHN0",
+      authDomain: "scammertrapper-a4755.firebaseapp.com",
+      projectId: "scammertrapper-a4755",
+      storageBucket: "scammertrapper-a4755.firebasestorage.app",
+      messagingSenderId: "639832220374",
+      appId: "1:639832220374:web:ae4e1942130ff40344df77",
+      measurementId: "G-SQM1PTX2LR"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // Kód Generálás
+    document.getElementById("generateBtn").addEventListener("click", async () => {
+      const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+      try {
+        await setDoc(doc(db, "rooms", code), { createdAt: new Date(), active: true });
+        document.getElementById("codeDisplay").innerText = "Generált Szobakód: " + code;
+      } catch (err) {
+        alert("Hiba: " + err.message);
+      }
+    });
+
+    // Felhasználók Kilistázása Élőben
+    const userListEl = document.getElementById("userList");
+    onSnapshot(collection(db, "users"), (snapshot) => {
+      userListEl.innerHTML = "";
+      snapshot.forEach((userDoc) => {
+        const u = userDoc.data();
+        const tr = document.createElement("tr");
+
+        tr.innerHTML = `
+          <td>${u.email}</td>
+          <td><span class="badge">${u.role || 'Nincs'}</span></td>
+          <td>
+            <select id="select-${userDoc.id}">
+              <option value="scammerTrapper" ${u.role === 'scammerTrapper' ? 'selected' : ''}>scammerTrapper</option>
+              <option value="Admin" ${u.role === 'Admin' ? 'selected' : ''}>Admin</option>
+              <option value="VIP" ${u.role === 'VIP' ? 'selected' : ''}>VIP</option>
+            </select>
+            <button onclick="changeRole('${userDoc.id}')">Mentés</button>
+          </td>
+        `;
+        userListEl.appendChild(tr);
+      });
+    });
+
+    // Rang Módosítása
+    window.changeRole = async (uid) => {
+      const newRole = document.getElementById(`select-${uid}`).value;
+      try {
+        await updateDoc(doc(db, "users", uid), { role: newRole });
+        alert("Rang sikeresen frissítve!");
+      } catch (err) {
+        alert("Hiba a frissítéskor: " + err.message);
+      }
+    };
+  </script>
+</body>
+</html>

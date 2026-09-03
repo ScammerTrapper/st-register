@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ScammerTrapper - Bejelentkezés</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    body { background-color: #0f172a; color: #f8fafc; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+    .card { background: #1e293b; padding: 2.5rem; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); width: 100%; max-width: 400px; }
+    h2 { margin-bottom: 1.5rem; text-align: center; color: #38bdf8; }
+    .input-group { margin-bottom: 1.2rem; }
+    label { display: block; margin-bottom: 0.5rem; font-size: 0.9rem; color: #94a3b8; }
+    input { width: 100%; padding: 0.75rem; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: #fff; outline: none; }
+    input:focus { border-color: #38bdf8; }
+    .btn-group { display: flex; gap: 10px; margin-top: 1rem; }
+    button { flex: 1; padding: 0.75rem; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+    .btn-primary { background: #0284c7; color: white; }
+    .btn-primary:hover { background: #0369a1; }
+    .btn-secondary { background: #334155; color: white; }
+    .btn-secondary:hover { background: #475569; }
+    #status { margin-top: 1rem; text-align: center; font-size: 0.85rem; color: #f43f5e; }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <h2>ScammerTrapper</h2>
+    <div class="input-group">
+      <label>Email cím</label>
+      <input type="email" id="email" placeholder="example@domain.com">
+    </div>
+    <div class="input-group">
+      <label>Jelszó</label>
+      <input type="password" id="password" placeholder="••••••••">
+    </div>
+    <div class="btn-group">
+      <button class="btn-primary" id="loginBtn">Bejelentkezés</button>
+      <button class="btn-secondary" id="registerBtn">Regisztráció</button>
+    </div>
+    <p id="status"></p>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyACpOJUxF6rzqrhqeiQl2BY575CdrDmHN0",
+      authDomain: "scammertrapper-a4755.firebaseapp.com",
+      projectId: "scammertrapper-a4755",
+      storageBucket: "scammertrapper-a4755.firebasestorage.app",
+      messagingSenderId: "639832220374",
+      appId: "1:639832220374:web:ae4e1942130ff40344df77",
+      measurementId: "G-SQM1PTX2LR"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    const status = document.getElementById("status");
+
+    // Automatikus átirányítás, ha már be van jelentkezve
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        window.location.href = "chat.html";
+      }
+    });
+
+    // Regisztráció
+    document.getElementById("registerBtn").addEventListener("click", async () => {
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+      try {
+        const userCred = await createUserWithEmailAndPassword(auth, email, password);
+        // Felhasználó mentése Firestore-ba alapértelmezett ranggal
+        await setDoc(doc(db, "users", userCred.user.uid), {
+          uid: userCred.user.uid,
+          email: email,
+          role: "scammerTrapper",
+          createdAt: new Date()
+        });
+        // az onAuthStateChanged automatikusan átirányít
+      } catch (err) {
+        status.innerText = "Hiba: " + err.message;
+      }
+    });
+
+    // Bejelentkezés
+    document.getElementById("loginBtn").addEventListener("click", async () => {
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+      try {
+        await signInWithEmailAndPassword(auth, email, password);
+        // az onAuthStateChanged automatikusan átirányít
+      } catch (err) {
+        status.innerText = "Hiba: " + err.message;
+      }
+    });
+  </script>
+</body>
+</html>
