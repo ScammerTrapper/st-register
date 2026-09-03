@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Profil kiegészítése - ScammerTrapper</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+    body { background-color: #0f172a; color: #f8fafc; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 1rem; }
+    .card { background: #1e293b; padding: 2rem; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); width: 100%; max-width: 400px; }
+    h2 { text-align: center; color: #38bdf8; margin-bottom: 0.5rem; }
+    p { text-align: center; color: #94a3b8; font-size: 0.9rem; margin-bottom: 1.5rem; }
+    .input-group { margin-bottom: 1rem; }
+    label { display: block; margin-bottom: 0.4rem; font-size: 0.85rem; color: #94a3b8; }
+    input { width: 100%; padding: 0.7rem; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: #fff; outline: none; }
+    input:focus { border-color: #38bdf8; }
+    button { width: 100%; padding: 0.75rem; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; background: #0284c7; color: white; margin-top: 0.5rem; }
+    button:hover { background: #0369a1; }
+    #status { margin-top: 1rem; text-align: center; font-size: 0.85rem; color: #f43f5e; }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <h2>Még egy utolsó lépés!</h2>
+    <p>A Google fiókod sikeresen összekötve. Kérlek add meg a megjelenítendő adataidat!</p>
+
+    <div class="input-group">
+      <label>Teljes Név</label>
+      <input type="text" id="name" placeholder="Gipsz Jakab">
+    </div>
+
+    <div class="input-group">
+      <label>Felhasználónév</label>
+      <input type="text" id="username" placeholder="jakab99">
+    </div>
+
+    <button id="saveBtn">Adataim Mentése & Belépés</button>
+    <p id="status"></p>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyACpOJUxF6rzqrhqeiQl2BY575CdrDmHN0",
+      authDomain: "scammertrapper-a4755.firebaseapp.com",
+      projectId: "scammertrapper-a4755",
+      storageBucket: "scammertrapper-a4755.firebasestorage.app",
+      messagingSenderId: "639832220374",
+      appId: "1:639832220374:web:ae4e1942130ff40344df77",
+      measurementId: "G-SQM1PTX2LR"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    let currentUser = null;
+
+    // Ellenőrizzük, hogy be van-e jelentkezve
+    onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        window.location.href = "auth.html";
+      } else {
+        currentUser = user;
+        if (user.displayName) {
+          document.getElementById("name").value = user.displayName;
+        }
+      }
+    });
+
+    document.getElementById("saveBtn").addEventListener("click", async () => {
+      const name = document.getElementById("name").value.trim();
+      const username = document.getElementById("username").value.trim();
+      const status = document.getElementById("status");
+
+      if (!name || !username) {
+        status.innerText = "Kérlek töltsd ki mindkét mezőt!";
+        return;
+      }
+
+      try {
+        await setDoc(doc(db, "users", currentUser.uid), {
+          uid: currentUser.uid,
+          name: name,
+          username: username,
+          email: currentUser.email,
+          role: "scammerTrapper",
+          createdAt: new Date()
+        });
+
+        window.location.href = "chat.html";
+      } catch (err) {
+        status.innerText = "Hiba: " + err.message;
+      }
+    });
+  </script>
+</body>
+</html>
