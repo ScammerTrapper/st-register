@@ -4,6 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ScammerTrapper - Hitelesítés</title>
+  
+  <!-- Google reCAPTCHA Enterprise Script -->
+  <script src="https://www.google.com/recaptcha/enterprise.js?render=6LdAe6ctAAAAAD11xedgohduSYaJVcpNEmLbMNSs"></script>
+
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
     body { background-color: #0f172a; color: #f8fafc; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 1rem; }
@@ -34,6 +38,9 @@
     .form-section { display: none; }
     .form-section.active { display: block; }
     #status { margin-top: 1rem; text-align: center; font-size: 0.85rem; color: #f43f5e; }
+    
+    /* reCAPTCHA jelvény finomítása */
+    .grecaptcha-badge { z-index: 999; }
   </style>
 </head>
 <body>
@@ -41,7 +48,7 @@
   <div class="card">
     <h2>ScammerTrapper</h2>
 
-    <!-- Fülek a váltsághoz -->
+    <!-- Fülek a váltáshoz -->
     <div class="tabs">
       <div class="tab active" id="tabLogin">Bejelentkezés</div>
       <div class="tab" id="tabRegister">Regisztráció</div>
@@ -120,6 +127,8 @@
       measurementId: "G-SQM1PTX2LR"
     };
 
+    const RECAPTCHA_SITE_KEY = "6LdAe6ctAAAAAD11xedgohduSYaJVcpNEmLbMNSs";
+
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
@@ -149,8 +158,47 @@
       status.innerText = "";
     });
 
-    // 1. REGISZTRÁCIÓ (Email + Jelszó + Név + Felhasználónév)
-    document.getElementById("registerBtn").addEventListener("click", async () => {
+    // reCAPTCHA Token beszerzése segédfüggvény
+    async function getRecaptchaToken(actionName) {
+      return new Promise((resolve, reject) => {
+        grecaptcha.enterprise.ready(async () => {
+          try {
+            const token = await grecaptcha.enterprise.execute(RECAPTCHA_SITE_KEY, { action: actionName });
+            resolve(token);
+          } catch (err) {
+            reject(err);
+          }
+        });
+      });
+    }
+
+    // 1. BEJELENTKEZÉS (reCAPTCHA v3/Enterprise-al)
+    document.getElementById("loginBtn").addEventListener("click", async (e) => {
+      e.preventDefault();
+      const email = document.getElementById("loginEmail").value.trim();
+      const password = document.getElementById("loginPassword").value;
+
+      if (!email || !password) {
+        status.innerText = "Kérlek add meg az emailt és a jelszót!";
+        return;
+      }
+
+      try {
+        status.innerText = "Ellenőrzés...";
+        // reCAPTCHA Enterprise ellenőrzés
+        const recaptchaToken = await getRecaptchaToken('LOGIN');
+        console.log("reCAPTCHA LOGIN Token:", recaptchaToken);
+
+        await signInWithEmailAndPassword(auth, email, password);
+        window.location.href = "chat.html";
+      } catch (err) {
+        status.innerText = "Hibás email vagy jelszó!";
+      }
+    });
+
+    // 2. REGISZTRÁCIÓ (reCAPTCHA v3/Enterprise-al)
+    document.getElementById("registerBtn").addEventListener("click", async (e) => {
+      e.preventDefault();
       const name = document.getElementById("regName").value.trim();
       const username = document.getElementById("regUsername").value.trim();
       const email = document.getElementById("regEmail").value.trim();
@@ -168,9 +216,14 @@
       }
 
       try {
+        status.innerText = "Ellenőrzés...";
+        // reCAPTCHA Enterprise ellenőrzés
+        const recaptchaToken = await getRecaptchaToken('REGISTER');
+        console.log("reCAPTCHA REGISTER Token:", recaptchaToken);
+
         const userCred = await createUserWithEmailAndPassword(auth, email, pass1);
         
-        // Elmentjük az adatokat a Firestore-ba scammerTrapper ranggal
+        // Adatok elmentése Firestore-ba scammerTrapper ranggal
         await setDoc(doc(db, "users", userCred.user.uid), {
           uid: userCred.user.uid,
           name: name,
@@ -186,39 +239,22 @@
       }
     });
 
-    // 2. BEJELENTKEZÉS (Email + Jelszó)
-    document.getElementById("loginBtn").addEventListener("click", async () => {
-      const email = document.getElementById("loginEmail").value.trim();
-      const password = document.getElementById("loginPassword").value;
-
-      if (!email || !password) {
-        status.innerText = "Kérlek add meg az emailt és a jelszót!";
-        return;
-      }
-
-      try {
-        await signInWithEmailAndPassword(auth, email, password);
-        window.location.href = "chat.html";
-      } catch (err) {
-        status.innerText = "Hibás email vagy jelszó!";
-      }
-    });
-
     // 3. GOOGLE BEJELENTKEZÉS
-    document.getElementById("googleBtn").addEventListener("click", async () => {
+    document.getElementById("googleBtn").addEventListener("click", async (e) => {
+      e.preventDefault();
       try {
+        const recaptchaToken = await getRecaptchaToken('GOOGLE_LOGIN');
+        console.log("reCAPTCHA GOOGLE Token:", recaptchaToken);
+
         const result = await signInWithPopup(auth, googleProvider);
         const user = result.user;
 
-        // Ellenőrizzük, hogy létezik-e már a felhasználó a Firestore-ban
         const userRef = doc(db, "users", user.uid);
         const userSnap = await getDoc(userRef);
 
         if (userSnap.exists() && userSnap.data().username) {
-          // Ha már megadta a nevét és felhasználónevét korábban
           window.location.href = "chat.html";
         } else {
-          // Ha új Google-fiókos regisztráló, átirányítjuk az kiegészítő adatok megadására
           window.location.href = "google-more.html";
         }
       } catch (err) {
