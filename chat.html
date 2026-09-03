@@ -3,45 +3,42 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ScammerTrapper - Chat</title>
+  <title>ScammerTrapper - Csevegés</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
     body { background-color: #0f172a; color: #f8fafc; height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; }
-    
-    .join-card { background: #1e293b; padding: 2rem; border-radius: 12px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.5); width: 350px; }
-    .join-card input { width: 100%; padding: 0.75rem; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: white; margin: 1rem 0; text-align: center; font-size: 1.1rem; text-transform: uppercase; }
 
-    .chat-container { width: 90%; max-width: 800px; height: 80vh; background: #1e293b; border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+    .chat-container { width: 95%; max-width: 900px; height: 85vh; background: #1e293b; border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
     .chat-header { background: #0f172a; padding: 1rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; }
-    .chat-messages { flex: 1; padding: 1rem; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
-    .message { background: #334155; padding: 0.75rem 1rem; border-radius: 8px; max-width: 70%; word-wrap: break-word; }
-    .message .sender { font-size: 0.8rem; color: #38bdf8; font-weight: bold; margin-bottom: 0.2rem; }
-    .message .role { font-size: 0.7rem; background: #0284c7; padding: 1px 5px; border-radius: 4px; color: white; margin-left: 5px; }
-    .chat-input { display: flex; padding: 1rem; background: #0f172a; gap: 10px; }
+    .chat-header h2 { font-size: 1.1rem; }
+    
+    .chat-messages { flex: 1; padding: 1.5rem; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+    .message { background: #334155; padding: 0.75rem 1rem; border-radius: 8px; max-width: 75%; word-wrap: break-word; align-self: flex-start; }
+    .message.own { background: #0369a1; align-self: flex-end; }
+    
+    .message .sender { font-size: 0.8rem; color: #38bdf8; font-weight: bold; margin-bottom: 0.2rem; display: flex; align-items: center; gap: 6px; }
+    .message.own .sender { color: #7dd3fc; }
+    .message .role { font-size: 0.65rem; background: #0284c7; padding: 1px 6px; border-radius: 4px; color: white; text-transform: uppercase; }
+
+    .chat-input { display: flex; padding: 1rem; background: #0f172a; gap: 10px; border-top: 1px solid #334155; }
     .chat-input input { flex: 1; padding: 0.75rem; border-radius: 6px; border: 1px solid #334155; background: #1e293b; color: white; outline: none; }
 
     button { padding: 0.75rem 1.2rem; background: #0284c7; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
     button:hover { background: #0369a1; }
-    .btn-logout { background: #f43f5e; padding: 0.4rem 0.8rem; font-size: 0.85rem; }
-    .btn-logout:hover { background: #e11d48; }
+    .btn-back { background: #334155; }
+    .btn-back:hover { background: #475569; }
   </style>
 </head>
 <body>
 
-  <!-- Kód beviteli nézet -->
-  <div class="join-card" id="joinSection">
-    <h3 style="color: #38bdf8;">Csatlakozás Csevegéshez</h3>
-    <input type="text" id="roomCode" placeholder="KÓD (Pl. A1B2C3)">
-    <button id="joinBtn" style="width: 100%;">Belépés a Szobába</button>
-  </div>
-
-  <!-- Chat felület -->
-  <div class="chat-container" id="chatSection" style="display: none;">
+  <div class="chat-container">
     <div class="chat-header">
-      <div>Szoba kód: <strong id="currentRoom" style="color: #38bdf8;"></strong></div>
-      <button class="btn-logout" id="logoutBtn">Kijelentkezés</button>
+      <button class="btn-back" id="backBtn">← Vissza a Dashboardra</button>
+      <h2>Szoba: <strong id="currentRoom" style="color: #38bdf8;">-</strong></h2>
     </div>
+
     <div class="chat-messages" id="messages"></div>
+
     <div class="chat-input">
       <input type="text" id="messageInput" placeholder="Írj egy üzenetet...">
       <button id="sendBtn">Küldés</button>
@@ -50,8 +47,8 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-    import { getFirestore, doc, getDoc, setDoc, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { getFirestore, doc, getDoc, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyACpOJUxF6rzqrhqeiQl2BY575CdrDmHN0",
@@ -68,88 +65,85 @@
     const db = getFirestore(app);
 
     let currentUserData = null;
-    let activeCode = "";
 
-    // Védett oldal + Firestore ellenőrzés/létrehozás
+    // URL Paraméter kiolvasása (?kod=A1B2C3)
+    const urlParams = new URLSearchParams(window.location.search);
+    const roomCode = urlParams.get('kod');
+
+    if (!roomCode) {
+      window.location.href = "dashboard.html";
+    }
+
+    document.getElementById("currentRoom").innerText = roomCode;
+
+    // Vissza gomb
+    document.getElementById("backBtn").addEventListener("click", () => {
+      window.location.href = "dashboard.html";
+    });
+
+    // Felhasználó és jogosultság ellenőrzése
     onAuthStateChanged(auth, async (user) => {
       if (!user) {
         window.location.href = "auth.html";
       } else {
-        const userRef = doc(db, "users", user.uid);
-        let userSnap = await getDoc(userRef);
-
-        // Ha a Firestore-ban még nincs bejegyzés a felhasználóhoz, létrehozzuk!
-        if (!userSnap.exists()) {
-          await setDoc(userRef, {
-            uid: user.uid,
-            email: user.email,
-            role: "scammerTrapper",
-            createdAt: new Date()
-          });
-          userSnap = await getDoc(userRef);
+        const userSnap = await getDoc(doc(db, "users", user.uid));
+        if (userSnap.exists()) {
+          currentUserData = userSnap.data();
         }
-
-        currentUserData = userSnap.data();
+        initChat(roomCode);
       }
     });
 
-    // Kijelentkezés
-    document.getElementById("logoutBtn").addEventListener("click", () => {
-      signOut(auth);
-    });
+    // Chat inicializálása és üzenetek figyelése
+    function initChat(code) {
+      const q = query(collection(db, "rooms", code, "messages"), orderBy("timestamp", "asc"));
+      
+      onSnapshot(q, (snapshot) => {
+        const messagesDiv = document.getElementById("messages");
+        messagesDiv.innerHTML = "";
 
-    // Belépés a szobába a kóddal
-    document.getElementById("joinBtn").addEventListener("click", async () => {
-      const code = document.getElementById("roomCode").value.trim().toUpperCase();
-      if (!code) return alert("Kérlek add meg a kódot!");
+        snapshot.forEach((docSnap) => {
+          const msg = docSnap.data();
+          const isOwn = currentUserData && msg.senderEmail === currentUserData.email;
 
-      const roomRef = doc(db, "rooms", code);
-      const roomSnap = await getDoc(roomRef);
-
-      if (roomSnap.exists()) {
-        activeCode = code;
-        document.getElementById("joinSection").style.display = "none";
-        document.getElementById("chatSection").style.display = "flex";
-        document.getElementById("currentRoom").innerText = code;
-
-        // Üzenetek töltése
-        const q = query(collection(db, "rooms", code, "messages"), orderBy("timestamp", "asc"));
-        onSnapshot(q, (snapshot) => {
-          const messagesDiv = document.getElementById("messages");
-          messagesDiv.innerHTML = "";
-          snapshot.forEach((docSnap) => {
-            const msg = docSnap.data();
-            const msgEl = document.createElement("div");
-            msgEl.className = "message";
-            msgEl.innerHTML = `
-              <div class="sender">
-                ${msg.sender} <span class="role">${msg.role || 'scammerTrapper'}</span>
-              </div>
-              <div>${msg.text}</div>
-            `;
-            messagesDiv.appendChild(msgEl);
-          });
-          messagesDiv.scrollTop = messagesDiv.scrollHeight;
+          const msgEl = document.createElement("div");
+          msgEl.className = `message ${isOwn ? 'own' : ''}`;
+          msgEl.innerHTML = `
+            <div class="sender">
+              ${msg.senderName || msg.senderEmail} 
+              <span class="role">${msg.role || 'scammerTrapper'}</span>
+            </div>
+            <div>${msg.text}</div>
+          `;
+          messagesDiv.appendChild(msgEl);
         });
-      } else {
-        alert("Érvénytelen kód! Kérj kódot az admintól.");
-      }
-    });
+
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+      });
+    }
 
     // Üzenet küldése
-    document.getElementById("sendBtn").addEventListener("click", async () => {
-      const input = document.getElementById("messageInput");
-      if (!input.value.trim() || !activeCode) return;
+    document.getElementById("sendBtn").addEventListener("click", sendMessage);
+    document.getElementById("messageInput").addEventListener("keypress", (e) => {
+      if (e.key === "Enter") sendMessage();
+    });
 
-      await addDoc(collection(db, "rooms", activeCode, "messages"), {
-        sender: currentUserData ? currentUserData.email : "Névtelen",
-        role: currentUserData ? currentUserData.role : "scammerTrapper",
-        text: input.value,
+    async function sendMessage() {
+      const input = document.getElementById("messageInput");
+      const text = input.value.trim();
+
+      if (!text || !roomCode || !currentUserData) return;
+
+      await addDoc(collection(db, "rooms", roomCode, "messages"), {
+        senderName: currentUserData.name || currentUserData.username,
+        senderEmail: currentUserData.email,
+        role: currentUserData.role || "scammerTrapper",
+        text: text,
         timestamp: serverTimestamp()
       });
 
       input.value = "";
-    });
+    }
   </script>
 </body>
 </html>
