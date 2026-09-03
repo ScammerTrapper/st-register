@@ -111,7 +111,7 @@
           msgEl.innerHTML = `
             <div class="sender">
               ${msg.senderName || msg.senderEmail} 
-              <span class="role">${msg.role || 'scammerTrapper'}</span>
+              <span class="role">${msg.role || 'user'}</span>
             </div>
             <div>${msg.text}</div>
           `;
@@ -137,7 +137,7 @@
       await addDoc(collection(db, "rooms", roomCode, "messages"), {
         senderName: currentUserData.name || currentUserData.username,
         senderEmail: currentUserData.email,
-        role: currentUserData.role || "scammerTrapper",
+        role: currentUserData.role || "user",
         text: text,
         timestamp: serverTimestamp()
       });
