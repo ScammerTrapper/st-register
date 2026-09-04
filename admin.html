@@ -3,56 +3,88 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin Dashboard</title>
+  <title>ScammerTrapper - Admin Felület</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
-    body { background-color: #0f172a; color: #f8fafc; padding: 2rem; }
-    .container { max-width: 900px; margin: 0 auto; }
-    h2 { color: #38bdf8; margin-bottom: 1rem; }
-    .card { background: #1e293b; padding: 1.5rem; border-radius: 10px; margin-bottom: 2rem; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
-    button { padding: 0.6rem 1.2rem; background: #0284c7; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
-    button:hover { background: #0369a1; }
-    .user-table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
-    .user-table th, .user-table td { padding: 0.75rem; text-align: left; border-bottom: 1px solid #334155; }
-    .user-table th { color: #94a3b8; }
-    select { padding: 0.4rem; background: #0f172a; color: white; border: 1px solid #334155; border-radius: 4px; }
-    .badge { background: #0369a1; padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.8rem; }
+    
+    /* Alapértelmezetten elrejtjük az egész oldalt, amíg a jogosultság ellenőrzése tart */
+    body { 
+      background-color: #0f172a; 
+      color: #f8fafc; 
+      min-height: 100vh; 
+      display: none; /* Ellenőrzésig rejtve */
+    }
+
+    /* Betöltő képernyő, amíg a jogosultságot ellenőrizzük */
+    #authCheckLoader {
+      position: fixed;
+      top: 0; left: 0; width: 100vw; height: 100vh;
+      background: #0f172a;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+    }
+    .spinner {
+      width: 40px; height: 40px;
+      border: 4px solid #334155;
+      border-top: 4px solid #f43f5e;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 1rem;
+    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+    /* Admin felület stílusai */
+    .admin-container { max-width: 1000px; margin: 2rem auto; padding: 0 1rem; }
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; border-bottom: 1px solid #334155; padding-bottom: 1rem; }
+    .header h1 { color: #f43f5e; }
+    
+    .card { background: #1e293b; padding: 1.5rem; border-radius: 12px; margin-bottom: 1.5rem; box-shadow: 0 10px 20px rgba(0,0,0,0.4); }
+    .card h2 { color: #38bdf8; margin-bottom: 1rem; font-size: 1.2rem; }
+
+    button { padding: 0.6rem 1.2rem; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+    .btn-danger { background: #f43f5e; color: white; }
+    .btn-danger:hover { background: #e11d48; }
+    .btn-primary { background: #0284c7; color: white; }
+    .btn-primary:hover { background: #0369a1; }
+
+    .input-group { display: flex; gap: 10px; margin-top: 1rem; }
+    .input-group input { flex: 1; padding: 0.7rem; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: white; }
   </style>
 </head>
 <body>
 
-  <div class="container">
-    <h2>Admin Vezérlőpult</h2>
+  <!-- Betöltő képernyő (amíg az admin rangot ellenőrizzük) -->
+  <div id="authCheckLoader">
+    <div class="spinner"></div>
+    <p>Adminisztrátori jogosultság ellenőrzése...</p>
+  </div>
 
-    <!-- Szoba Kód Generálás -->
-    <div class="card">
-      <h3>Csevegőszoba Kód Generálás</h3>
-      <p style="color: #94a3b8; margin: 0.5rem 0;">Generálj egy egyedi kódot, amit odaadhatsz a felhasználóknak a belépéshez.</p>
-      <button id="generateBtn">Új kód generálása</button>
-      <h4 id="codeDisplay" style="margin-top: 1rem; color: #4ade80;"></h4>
+  <!-- A tényleges admin felület -->
+  <div class="admin-container">
+    <div class="header">
+      <h1>Admin Vezérlőpult</h1>
+      <button class="btn-danger" id="logoutBtn">Kijelentkezés</button>
     </div>
 
-    <!-- Felhasználók listája és Rangok kezelése -->
+    <!-- Példa Admin funkció: Új chatszoba / kód generálása -->
     <div class="card">
-      <h3>Regisztrált Felhasználók & Rangok</h3>
-      <table class="user-table">
-        <thead>
-          <tr>
-            <th>Email</th>
-            <th>Jelenlegi Rang</th>
-            <th>Új Rang Beállítása</th>
-          </tr>
-        </thead>
-        <tbody id="userList">
-          <!-- Dinamikusan töltődik fel -->
-        </tbody>
-      </table>
+      <h2>Új Csevegőszoba Létrehozása</h2>
+      <p style="color: #94a3b8; font-size: 0.9rem;">Hozz létre egy új szobát és generálj hozzá kódot a felhasználóknak.</p>
+      <div class="input-group">
+        <input type="text" id="newRoomCode" placeholder="Szobakód (pl. ADMIN101)">
+        <button class="btn-primary" id="createRoomBtn">Szoba Létrehozása</button>
+      </div>
+      <p id="adminStatus" style="margin-top: 0.5rem; font-size: 0.85rem; color: #38bdf8;"></p>
     </div>
   </div>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getFirestore, doc, setDoc, collection, onSnapshot, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { getFirestore, doc, getDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyACpOJUxF6rzqrhqeiQl2BY575CdrDmHN0",
@@ -65,53 +97,73 @@
     };
 
     const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
     const db = getFirestore(app);
 
-    // Kód Generálás
-    document.getElementById("generateBtn").addEventListener("click", async () => {
-      const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+    // 🔒 JOGOSULTSÁG ELLENŐRZÉSE (SECURITY GUARD)
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        // 1. Ha nincs bejelentkezve -> Vissza az Auth oldalra
+        window.location.href = "auth.html";
+        return;
+      }
+
       try {
-        await setDoc(doc(db, "rooms", code), { createdAt: new Date(), active: true });
-        document.getElementById("codeDisplay").innerText = "Generált Szobakód: " + code;
+        // Lekérjük a felhasználó adatát a Firestore 'users' gyűjteményből
+        const userRef = doc(db, "users", user.uid);
+        const userSnap = await getDoc(userRef);
+
+        if (userSnap.exists()) {
+          const userData = userSnap.data();
+
+          // 2. Ellenőrizzük, hogy a role megegyezik-e az 'admin'-nal
+          if (userData.role === "admin") {
+            // SIKER: Admin a felhasználó! Megjelenítjük az oldalt.
+            document.getElementById("authCheckLoader").style.display = "none";
+            document.body.style.display = "block";
+          } else {
+            // 3. Ha csak 'scammerTrapper' vagy egyéb nem-admin user -> Kidobjuk az Auth-ra!
+            window.location.href = "auth.html";
+          }
+        } else {
+          // Ha nincs Firestore rekordja -> Kidobjuk az Auth-ra
+          window.location.href = "auth.html";
+        }
       } catch (err) {
-        alert("Hiba: " + err.message);
+        console.error("Hiba az ellenőrzés során:", err);
+        window.location.href = "auth.html";
       }
     });
 
-    // Felhasználók Kilistázása Élőben
-    const userListEl = document.getElementById("userList");
-    onSnapshot(collection(db, "users"), (snapshot) => {
-      userListEl.innerHTML = "";
-      snapshot.forEach((userDoc) => {
-        const u = userDoc.data();
-        const tr = document.createElement("tr");
+    // Új szoba létrehozása (Admin funkció)
+    document.getElementById("createRoomBtn").addEventListener("click", async () => {
+      const codeInput = document.getElementById("newRoomCode");
+      const code = codeInput.value.trim().toUpperCase();
+      const status = document.getElementById("adminStatus");
 
-        tr.innerHTML = `
-          <td>${u.email}</td>
-          <td><span class="badge">${u.role || 'user'}</span></td>
-          <td>
-            <select id="select-${userDoc.id}">
-              <option value="scammerTrapper" ${u.role === 'user' ? 'selected' : ''}>User</option>
-              <option value="Admin" ${u.role === 'Admin' ? 'selected' : ''}>Admin</option>
-              <option value="Moderátor" ${u.role === 'Moderátor' ? 'selected' : ''}>Moderátor</option>
-            </select>
-            <button onclick="changeRole('${userDoc.id}')">Mentés</button>
-          </td>
-        `;
-        userListEl.appendChild(tr);
+      if (!code) {
+        status.innerText = "Adja meg a szobakódot!";
+        return;
+      }
+
+      try {
+        await setDoc(doc(db, "rooms", code), {
+          code: code,
+          createdAt: serverTimestamp()
+        });
+        status.innerText = `Sikeresen létrehozva a(z) ${code} szoba!`;
+        codeInput.value = "";
+      } catch (err) {
+        status.innerText = "Hiba a létrehozáskor: " + err.message;
+      }
+    });
+
+    // Kijelentkezés
+    document.getElementById("logoutBtn").addEventListener("click", () => {
+      signOut(auth).then(() => {
+        window.location.href = "auth.html";
       });
     });
-
-    // Rang Módosítása
-    window.changeRole = async (uid) => {
-      const newRole = document.getElementById(`select-${uid}`).value;
-      try {
-        await updateDoc(doc(db, "users", uid), { role: newRole });
-        alert("Rang sikeresen frissítve!");
-      } catch (err) {
-        alert("Hiba a frissítéskor: " + err.message);
-      }
-    };
   </script>
 </body>
 </html>
